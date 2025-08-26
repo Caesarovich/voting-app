@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results - Voting App</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🗳️ Voting App</h1>
+            <a href="/" class="home-link">← Create New Poll</a>
+        </header>
+
+        <main>
+            <div id="loading" class="loading">
+                <p>Loading results...</p>
+            </div>
+
+            <div id="resultsContent" class="results-content hidden">
+                <div class="poll-header">
+                    <h2 id="pollTitle"></h2>
+                    <p id="pollDescription" class="poll-description"></p>
+                    <div id="pollDeadline" class="poll-deadline hidden">
+                        <span class="deadline-label">Deadline:</span>
+                        <span id="deadlineText"></span>
+                    </div>
+                    <div class="poll-stats">
+                        <span id="totalVotes" class="total-votes"></span>
+                        <span id="pollStatus" class="poll-status"></span>
+                    </div>
+                </div>
+
+                <div class="results-section">
+                    <h3>📊 Results</h3>
+                    <div id="resultsChart" class="results-chart">
+                        <!-- Results will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="share-section">
+                    <h3>🔗 Share</h3>
+                    <div class="poll-links">
+                        <div class="link-group">
+                            <label>Voting link:</label>
+                            <div class="link-copy">
+                                <input type="text" id="pollUrl" readonly>
+                                <button type="button" onclick="copyToClipboard('pollUrl')">Copy</button>
+                            </div>
+                        </div>
+                        <div class="link-group">
+                            <label>Results link:</label>
+                            <div class="link-copy">
+                                <input type="text" id="resultsUrl" readonly>
+                                <button type="button" onclick="copyToClipboard('resultsUrl')">Copy</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button type="button" onclick="refreshResults()" class="secondary-btn">
+                        🔄 Refresh Results
+                    </button>
+                    <a href="/" class="secondary-btn">Create New Poll</a>
+                </div>
+            </div>
+
+            <div id="error" class="error hidden"></div>
+        </main>
+
+        <footer>
+            <p>Made with ❤️ for democratic decision making</p>
+        </footer>
+    </div>
+
+    <script>
+        // Get poll ID from URL
+        const pollId = window.location.pathname.split('/')[2];
+        
+        let poll = null;
+        let results = null;
+
+        // Load poll results
+        async function loadResults() {
+            try {
+                const response = await fetch(`/api/polls/${pollId}/results`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to load results');
+                }
+
+                poll = data.poll;
+                results = data.results;
+                displayResults(data.totalVotes, data.pollUrl);
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
+
+        function displayResults(totalVotes, pollUrl) {
+            // Display poll info
+            document.getElementById('pollTitle').textContent = poll.title;
+            
+            const descElement = document.getElementById('pollDescription');
+            if (poll.description) {
+                descElement.textContent = poll.description;
+                descElement.style.display = 'block';
+            } else {
+                descElement.style.display = 'none';
+            }
+
+            // Display deadline if exists
+            if (poll.deadline) {
+                const deadlineElement = document.getElementById('pollDeadline');
+                const deadlineDate = new Date(poll.deadline);
+                document.getElementById('deadlineText').textContent = deadlineDate.toLocaleString();
+                deadlineElement.classList.remove('hidden');
+            }
+
+            // Display total votes and status
+            document.getElementById('totalVotes').textContent = `Total votes: ${totalVotes}`;
+            
+            const statusElement = document.getElementById('pollStatus');
+            if (poll.isExpired) {
+                statusElement.textContent = '⏰ Expired';
+                statusElement.className = 'poll-status expired';
+            } else {
+                statusElement.textContent = '✅ Active';
+                statusElement.className = 'poll-status active';
+            }
+
+            // Display results chart
+            const resultsChart = document.getElementById('resultsChart');
+            resultsChart.innerHTML = '';
+
+            if (totalVotes === 0) {
+                resultsChart.innerHTML = '<p class="no-votes">No votes yet</p>';
+            } else {
+                // Sort results by vote count (highest first)
+                const sortedResults = [...results].sort((a, b) => b.votes - a.votes);
+                
+                sortedResults.forEach((result, index) => {
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'result-item';
+                    
+                    const isWinner = index === 0 && result.votes > 0;
+                    
+                    resultItem.innerHTML = `
+                        <div class="result-label">
+                            ${isWinner ? '🏆 ' : ''}
+                            <span class="option-text">${escapeHtml(result.option)}</span>
+                        </div>
+                        <div class="result-bar-container">
+                            <div class="result-bar" style="width: ${result.percentage}%"></div>
+                        </div>
+                        <div class="result-stats">
+                            <span class="votes">${result.votes} vote${result.votes !== 1 ? 's' : ''}</span>
+                            <span class="percentage">${result.percentage}%</span>
+                        </div>
+                    `;
+                    
+                    resultsChart.appendChild(resultItem);
+                });
+            }
+
+            // Set share links
+            document.getElementById('pollUrl').value = pollUrl;
+            document.getElementById('resultsUrl').value = window.location.href;
+            
+            document.getElementById('resultsContent').classList.remove('hidden');
+        }
+
+        // Refresh results
+        async function refreshResults() {
+            document.getElementById('loading').classList.remove('hidden');
+            await loadResults();
+        }
+
+        // Copy to clipboard function
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            element.select();
+            element.setSelectionRange(0, 99999); // For mobile devices
+            
+            try {
+                document.execCommand('copy');
+                
+                // Show feedback
+                const button = element.nextElementSibling;
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.style.background = '#4CAF50';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = '';
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy: ', err);
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Auto-refresh results every 30 seconds if poll is active
+        let autoRefreshInterval;
+        
+        function startAutoRefresh() {
+            if (poll && !poll.isExpired) {
+                autoRefreshInterval = setInterval(() => {
+                    refreshResults();
+                }, 30000);
+            }
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+        }
+
+        // Load results on page load
+        loadResults().then(() => {
+            startAutoRefresh();
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', stopAutoRefresh);
+    </script>
+</body>
+</html>
