@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vote - Voting App</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🗳️ Voting App</h1>
+            <a href="/" class="home-link">← Create New Poll</a>
+        </header>
+
+        <main>
+            <div id="loading" class="loading">
+                <p>Loading poll...</p>
+            </div>
+
+            <div id="pollContent" class="poll-content hidden">
+                <div class="poll-header">
+                    <h2 id="pollTitle"></h2>
+                    <p id="pollDescription" class="poll-description"></p>
+                    <div id="pollDeadline" class="poll-deadline hidden">
+                        <span class="deadline-label">Deadline:</span>
+                        <span id="deadlineText"></span>
+                    </div>
+                </div>
+
+                <div id="expiredMessage" class="expired-message hidden">
+                    <h3>⏰ This poll has expired</h3>
+                    <p>The voting deadline has passed, but you can still view the results.</p>
+                    <a id="expiredResultsLink" class="btn secondary-btn">View Results</a>
+                </div>
+
+                <form id="voteForm" class="vote-form">
+                    <div class="form-group">
+                        <label>Choose an option:</label>
+                        <div id="optionsList" class="options-list">
+                            <!-- Options will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="submit-btn" id="voteBtn">
+                            Submit Vote
+                        </button>
+                        <a id="resultsLink" class="secondary-btn">View Results</a>
+                    </div>
+                </form>
+
+                <div id="voteSuccess" class="success hidden">
+                    <h3>✅ Vote Submitted Successfully!</h3>
+                    <p>Thank you for voting. You can view the results below.</p>
+                    <a id="successResultsLink" class="btn">View Results</a>
+                </div>
+            </div>
+
+            <div id="error" class="error hidden"></div>
+        </main>
+
+        <footer>
+            <p>Made with ❤️ for democratic decision making</p>
+        </footer>
+    </div>
+
+    <script>
+        // Get poll ID from URL
+        const pollId = window.location.pathname.split('/')[2];
+        
+        let poll = null;
+
+        // Load poll data
+        async function loadPoll() {
+            try {
+                const response = await fetch(`/api/polls/${pollId}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to load poll');
+                }
+
+                poll = data.poll;
+                displayPoll();
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
+
+        function displayPoll() {
+            document.getElementById('pollTitle').textContent = poll.title;
+            
+            const descElement = document.getElementById('pollDescription');
+            if (poll.description) {
+                descElement.textContent = poll.description;
+                descElement.style.display = 'block';
+            } else {
+                descElement.style.display = 'none';
+            }
+
+            // Display deadline if exists
+            if (poll.deadline) {
+                const deadlineElement = document.getElementById('pollDeadline');
+                const deadlineDate = new Date(poll.deadline);
+                document.getElementById('deadlineText').textContent = deadlineDate.toLocaleString();
+                deadlineElement.classList.remove('hidden');
+            }
+
+            // Check if poll is expired
+            if (poll.isExpired) {
+                document.getElementById('expiredMessage').classList.remove('hidden');
+                document.getElementById('voteForm').classList.add('hidden');
+                document.getElementById('expiredResultsLink').href = `/results/${pollId}`;
+            } else {
+                // Display voting options
+                const optionsList = document.getElementById('optionsList');
+                poll.options.forEach((option, index) => {
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'option-item';
+                    optionDiv.innerHTML = `
+                        <label>
+                            <input type="radio" name="option" value="${index}" required>
+                            <span class="option-text">${escapeHtml(option)}</span>
+                        </label>
+                    `;
+                    optionsList.appendChild(optionDiv);
+                });
+            }
+
+            // Set results link
+            document.getElementById('resultsLink').href = `/results/${pollId}`;
+            
+            document.getElementById('pollContent').classList.remove('hidden');
+        }
+
+        // Handle vote submission
+        document.getElementById('voteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const optionIndex = parseInt(formData.get('option'));
+
+            if (isNaN(optionIndex)) {
+                showError('Please select an option');
+                return;
+            }
+
+            try {
+                document.getElementById('voteBtn').disabled = true;
+                
+                const response = await fetch(`/api/polls/${pollId}/vote`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ optionIndex })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to submit vote');
+                }
+
+                // Show success message
+                document.getElementById('voteForm').classList.add('hidden');
+                document.getElementById('voteSuccess').classList.remove('hidden');
+                document.getElementById('successResultsLink').href = `/results/${pollId}`;
+                
+            } catch (error) {
+                showError(error.message);
+                document.getElementById('voteBtn').disabled = false;
+            }
+        });
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load poll on page load
+        loadPoll();
+    </script>
+</body>
+</html>

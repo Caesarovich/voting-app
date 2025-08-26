@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voting App - Create a Poll</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🗳️ Voting App</h1>
+            <p>Create private polls and share them with a link</p>
+        </header>
+
+        <main>
+            <form id="pollForm" class="poll-form">
+                <div class="form-group">
+                    <label for="title">Poll Title *</label>
+                    <input type="text" id="title" name="title" required maxlength="200" 
+                           placeholder="What's your poll about?">
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description (optional)</label>
+                    <textarea id="description" name="description" maxlength="500" rows="3"
+                              placeholder="Add more details about your poll..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Poll Options *</label>
+                    <div id="optionsContainer">
+                        <div class="option-input">
+                            <input type="text" name="option" placeholder="Option 1" required maxlength="100">
+                            <button type="button" class="remove-option" style="display: none;">×</button>
+                        </div>
+                        <div class="option-input">
+                            <input type="text" name="option" placeholder="Option 2" required maxlength="100">
+                            <button type="button" class="remove-option" style="display: none;">×</button>
+                        </div>
+                    </div>
+                    <button type="button" id="addOption" class="add-option-btn">+ Add Option</button>
+                </div>
+
+                <div class="form-group">
+                    <label for="deadline">Deadline (optional)</label>
+                    <input type="datetime-local" id="deadline" name="deadline">
+                    <small>Leave empty for no deadline</small>
+                </div>
+
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    Create Poll
+                </button>
+            </form>
+
+            <div id="result" class="result hidden">
+                <h2>🎉 Poll Created Successfully!</h2>
+                <div class="poll-links">
+                    <div class="link-group">
+                        <label>Share this link for voting:</label>
+                        <div class="link-copy">
+                            <input type="text" id="pollUrl" readonly>
+                            <button type="button" onclick="copyToClipboard('pollUrl')">Copy</button>
+                        </div>
+                    </div>
+                    <div class="link-group">
+                        <label>View results:</label>
+                        <div class="link-copy">
+                            <input type="text" id="resultsUrl" readonly>
+                            <button type="button" onclick="copyToClipboard('resultsUrl')">Copy</button>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" onclick="createAnother()" class="secondary-btn">
+                    Create Another Poll
+                </button>
+            </div>
+
+            <div id="error" class="error hidden"></div>
+        </main>
+
+        <footer>
+            <p>Made with ❤️ for democratic decision making</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
