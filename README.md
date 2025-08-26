@@ -1,3 +1,7 @@
+⚠️ This is not an app I built, it was 'vibe coded' by AI. I juste wanted to test the new Github Agent mode.
+
+Prompt: Implement complete voting/poll application with private polls, shareable links, and deadline support
+
 # 🗳️ Voting App
 
 A web-based voting/poll application where users can create private polls, share them via links, and view real-time results with deadline support.
